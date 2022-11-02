@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 
-import { catchError, combineLatest, EMPTY, filter, map, Observable, Subject } from 'rxjs';
+import { BehaviorSubject, catchError, combineLatest, EMPTY, filter, map, Observable, startWith, Subject } from 'rxjs';
 import { ProductCategory } from '../product-categories/product-category';
 
 import { Product } from './product';
@@ -17,7 +17,7 @@ export class ProductListComponent{
   selecteedCategoryId = 1;
   categories$ = this.productService.categories$;
   
-  products$ = this.productService.productsWithCategory$.pipe(
+  productsObsolete$ = this.productService.productsWithCategory$.pipe(
     catchError(err => {
       this.errorMessage = err;
       return EMPTY;
@@ -38,8 +38,22 @@ export class ProductListComponent{
       return EMPTY;
     }));
 
-    categorySelectedSubject = new Subject<number>();
+    private categorySelectedSubject = new BehaviorSubject<number>(0);
     categorySelectedAction$ = this.categorySelectedSubject.asObservable();
+
+    products$ = combineLatest([
+      this.productService.productsWithCategory$,
+      this.categorySelectedAction$
+    ])
+    .pipe(
+      map(([products, selectedCategoryId]) =>
+        products.filter(product =>
+          selectedCategoryId ? product.categoryId === selectedCategoryId : true)),
+      catchError(err => {
+        this.errorMessage = err;
+        return EMPTY;
+      })
+    );
 
   constructor(private productService: ProductService) { }
 
