@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 
-import { catchError, EMPTY, Observable } from 'rxjs';
+import { catchError, EMPTY, filter, map, Observable } from 'rxjs';
 import { ProductCategory } from '../product-categories/product-category';
 
 import { Product } from './product';
@@ -14,8 +14,10 @@ export class ProductListComponent{
   pageTitle = 'Product List';
   errorMessage = '';
   categories: ProductCategory[] = [];
+  selecteedCategoryId = 1;
+  categories$ = this.productService.categories$;
   
-  products$ = this.productService.products$.pipe(
+  products$ = this.productService.productsWithCategory$.pipe(
     catchError(err => {
       this.errorMessage = err;
       return EMPTY;
@@ -23,6 +25,18 @@ export class ProductListComponent{
   );
 
   filteredProducts$ = this.productService.filteredProducts$;
+
+  productsFiltered$ = this.productService.productsWithCategory$.pipe(
+    map( products =>
+      products.filter( product => 
+        this.selecteedCategoryId ? product.categoryId === this.selecteedCategoryId : true)),
+        // HAS selectedCategoryId 
+        //                       ? if yes, filter by categoryId 
+        //                                                                         : if no, return all products
+    catchError(err => {
+      this.errorMessage = err;
+      return EMPTY;
+    }));
 
   constructor(private productService: ProductService) { }
 
@@ -33,6 +47,6 @@ export class ProductListComponent{
   }
 
   onSelected(categoryId: string): void {
-    console.log('Not yet implemented');
+    this.selecteedCategoryId = +categoryId; // + casts string to number  
   }
 }

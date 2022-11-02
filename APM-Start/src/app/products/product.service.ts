@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 
-import { catchError, map, Observable, tap, throwError } from 'rxjs';
+import { catchError, combineLatest, EMPTY, map, Observable, tap, throwError } from 'rxjs';
 
 import { Product } from './product';
+import { ProductCategoryService } from '../product-categories/product-category.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,19 +12,42 @@ import { Product } from './product';
 export class ProductService {
   private productsUrl = 'api/products';
   private suppliersUrl = 'api/suppliers';
+  private categoriesUrl = 'api/categories';
+  errorMessage: any;
   
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, 
+    private productCategoryService: ProductCategoryService) { }
 
   products$ = this.http.get<Product[]>(this.productsUrl)
     .pipe(
       tap(data => console.log('Products: ', JSON.stringify(data))),
-      map(products => 
+      /*       map(products => 
         products.map(product => ({
           ...product,
           price: product.price ? product.price * 1.5 : 0,
           searchKey: [product.productName]
-          }) as Product)),
+          }) as Product)), */
       catchError(this.handleError)
+    );
+
+    categories$ = this.productCategoryService.productCategories$.pipe(
+    catchError(err => {
+      this.errorMessage = err;
+      return EMPTY;
+    })
+  );
+
+    productsWithCategory$ = combineLatest([
+      this.products$,
+      this.categories$
+    ]).pipe(
+      map(([products, categories]) =>
+        products.map(product => ({
+          ...product,
+          price: product.price ? product.price * 1.5 : 0,
+          category: categories.find(c => product.categoryId === c.id)?.name,
+          searchKey: [product.productName]
+        }) as Product))
     );
 
     // filter products by price > 50 and put in array products$
